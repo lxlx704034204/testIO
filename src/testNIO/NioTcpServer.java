@@ -1,3 +1,4 @@
+package testNIO;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -33,7 +34,7 @@ public class NioTcpServer extends Thread {
             serverSocketChannel.configureBlocking(false); // 非阻塞
             serverSocketChannel.socket().bind(inetSocketAddress);
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT); // 向通道注册选择器和对应事件标识
-            log.info("Server: socket server started.");
+            log.info("NioServer: socket server started.");
             while(true) { // 轮询
                 int nKeys = selector.select();
                 if(nKeys>0) {
@@ -42,13 +43,13 @@ public class NioTcpServer extends Thread {
                     while(it.hasNext()) {
                         SelectionKey key = it.next();
                         if(key.isAcceptable()) {
-                            log.info("Server: SelectionKey is acceptable.");
+                            log.info("NioServer: SelectionKey is acceptable.");
                             handler.handleAccept(key);
                         } else if(key.isReadable()) {
-                            log.info("Server: SelectionKey is readable.");
+                            log.info("NioServer: SelectionKey is readable.");
                             handler.handleRead(key);
                         } else if(key.isWritable()) {
-                            log.info("Server: SelectionKey is writable.");
+                            log.info("NioServer: SelectionKey is writable.");
                             handler.handleWrite(key);
                         }
                         it.remove();
@@ -97,7 +98,7 @@ public class NioTcpServer extends Thread {
         public void handleAccept(SelectionKey key) throws IOException {
             ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
             SocketChannel socketChannel = serverSocketChannel.accept();
-            log.info("Server: accept client socket " + socketChannel);
+            log.info("NioServer: accept client socket " + socketChannel);
             socketChannel.configureBlocking(false);
             socketChannel.register(key.selector(), SelectionKey.OP_READ);
         }
@@ -109,8 +110,8 @@ public class NioTcpServer extends Thread {
             while(true) {
                 int readBytes = socketChannel.read(byteBuffer);
                 if(readBytes>0) {
-                    log.info("Server: readBytes = " + readBytes);
-                    log.info("Server: data = " + new String(byteBuffer.array(), 0, readBytes));
+                    log.info("NioServer: readBytes = " + readBytes);
+                    log.info("NioServer: data = " + new String(byteBuffer.array(), 0, readBytes));
                     byteBuffer.flip();
                     socketChannel.write(byteBuffer);
                     break;
@@ -135,6 +136,6 @@ public class NioTcpServer extends Thread {
     public static void main(String[] args) {
         NioTcpServer server = new NioTcpServer("localhost", 1000);
         server.start();
-        System.out.println("NIO Server started!");
+        System.out.println("NIOServer started!");
     }
 }

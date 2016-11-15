@@ -11,13 +11,17 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 
 
-public class Client implements Runnable{
+//public class Client implements Runnable{
+public class Client extends Thread{
+    final static SimpleDateFormat sdf=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private AsynchronousSocketChannel channel;
     private Helper helper;
     private CountDownLatch latch;
@@ -40,45 +44,60 @@ public class Client implements Runnable{
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        int sleepTime = Integer.parseInt(args[0]);
+        int sleepTime = Integer.parseInt("10");
         Helper.sleep(sleepTime);
 
+        /**
+         * AsynchronousChannelGroup其内部其实是一个(一些)线程池来进行实质工作的；而他们干的活就是等待IO事件，处理数据，分发各个注册的completion handlers
+         */
         AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(Runtime.getRuntime().availableProcessors(), Executors.defaultThreadFactory());
         //只能跑一个线程，第二个线程connect会挂住，暂时不明原因
-        final int THREAD_NUM = 1;
+        final int THREAD_NUM = 2;
         CountDownLatch latch = new CountDownLatch(THREAD_NUM);
 
         //创建个多线程模拟多个客户端，模拟失败，无效
         //只能通过命令行同时运行多个进程来模拟多个客户端
-        for(int i=0; i<THREAD_NUM; i++){
+        /*for(int i=0; i<THREAD_NUM; i++){
             Client c = new Client(channelGroup, latch);
-            Thread t = new Thread(c);
-            System.out.println(t.getName() + "---start");
-            t.start();
+            c.start();
+            System.out.println(c.getName() + "---start");
+//            Thread t = new Thread(c);
+//            System.out.println(t.getName() + "---start");
+//            t.start();
             //让主线程等待子线程处理再退出, 这对于异步调用无效
             //t.join();
-        }
+
+        }*/
+        Client c1 = new Client(channelGroup, latch);
+        Client c2 = new Client(channelGroup, latch);
+        c1.start();
+        c2.start();
 
         latch.await();
 
         if(channelGroup !=null){
             channelGroup.shutdown();
         }
+
+        System.out.println("#####################我是main函数结束all work done at "+sdf.format(new Date())+","+System.currentTimeMillis());
     }
 
     @Override
     public void run() {
-        System.out.println(Thread.currentThread().getName() + "---run");
+        System.out.println(Thread.currentThread().getName() + "---run,我跑我的"+System.currentTimeMillis());
+
 
         //连接服务器
         channel.connect(new InetSocketAddress("localhost", 8383), null, new CompletionHandler<Void, Void>(){
-            final ByteBuffer readBuffer = ByteBuffer.allocateDirect(1024);
+//            final ByteBuffer readBuffer = ByteBuffer.allocateDirect(1024);
+            ByteBuffer readBuffer = ByteBuffer.allocateDirect(1024);
 
             @Override
             public void completed(Void result, Void attachment) {
                 //连接成功后, 异步调用OS向服务器写一条消息
                 try {
                     //channel.write(CharsetHelper.encode(CharBuffer.wrap(helper.getWord())));
+                    System.out.println(Thread.currentThread().getName() + "向服务器异步写消息---" + new Date());
                     writeStringMessage(helper.getWord());
                 } catch (CharacterCodingException e) {
                     e.printStackTrace();
@@ -87,38 +106,43 @@ public class Client implements Runnable{
                 //helper.sleep();//等待写异步调用完成
                 readBuffer.clear();
                 //异步调用OS读取服务器发送的消息
-                channel.read(readBuffer, null, new CompletionHandler<Integer, Object>(){
+                channel.read(readBuffer, null, new CompletionHandler<Integer, Object>() {
 
                     @Override
                     public void completed(Integer result, Object attachment) {
-                        try{
+                        try {
                             //异步读取完成后处理
-                            if(result > 0){
-                                readBuffer.flip();
+                            if (result > 0) {
+                                /**
+                                 * flip的作用有两个：
+                                 1. 把limit设置为当前的position值
+                                 2. 把position设置为0
+                                 然后处理的数据就是从position到limit直接的数据，也就是你刚刚读取过来的数据
+                                 */
+                                readBuffer.flip();//反转
                                 CharBuffer charBuffer = CharsetHelper.decode(readBuffer);
                                 String answer = charBuffer.toString();
-                                System.out.println(Thread.currentThread().getName() + "---" + answer);
+                                System.out.println(Thread.currentThread().getName() +"-"+ new Date()+ "---" + answer );
                                 readBuffer.clear();
 
                                 String word = helper.getWord();
-                                if(word != null){
+                                if (word != null) {
                                     //异步写
                                     //channel.write(CharsetHelper.encode(CharBuffer.wrap(word)));
                                     writeStringMessage(word);
                                     //helper.sleep();//等待异步操作
                                     channel.read(readBuffer, null, this);
-                                }
-                                else{
+                                } else {
                                     //不想发消息了，主动关闭channel
                                     shutdown();
+                                    System.out.println(Thread.currentThread().getName() + "---hi,我执行完通道关闭了。" + new Date());
                                 }
-                            }
-                            else{
+                            } else {
                                 //对方已经关闭channel，自己被动关闭，避免空循环
                                 shutdown();
+                                System.out.println(Thread.currentThread().getName() + "---通道被动关闭。" + new Date());
                             }
-                        }
-                        catch(Exception e){
+                        } catch (Exception e) {
                             e.printStackTrace();
                         }
                     }
@@ -157,9 +181,28 @@ public class Client implements Runnable{
                 }
             }
         });
+
+        //各线程自己跑自己的任务
+        for(int i = 0;i< 1000; i++){
+            //通道未关闭我就一直自己跑自己的
+            if(!channel.isOpen()){
+                System.out.println(Thread.currentThread().getName() + "---通道关闭了，我不用跑了，耶！"+i+"-"+System.currentTimeMillis());
+                break;
+            }
+            System.out.println(Thread.currentThread().getName() + "---我跑我的"+i+"-"+System.currentTimeMillis());
+        }
+
+        try {
+            shutdown();
+            System.out.println(Thread.currentThread().getName() + "---我执行完强制关闭通道。" + new Date());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println(Thread.currentThread().getName() + "---我结束了，真的。"+System.currentTimeMillis());
     }
 
     private void shutdown() throws IOException {
+
         if(channel != null){
             channel.close();
         }
@@ -227,7 +270,7 @@ public class Client implements Runnable{
 
     /**
      * Sends a message
-     * @param string the message
+     * @param msg the message
      * @throws CharacterCodingException
      */
     public void writeStringMessage(String msg) throws CharacterCodingException {

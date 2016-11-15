@@ -56,12 +56,12 @@ public class SimpleBioTcpServer extends Thread {
             }
         }
         out.flush();
-        System.out.println("Server: receives clientMessage->" + clientMessage);
+        System.out.println("BIOServer: receives clientMessage->" + clientMessage);
     }
 
     public static void main(String[] args) {
         SimpleBioTcpServer server = new SimpleBioTcpServer(1983);
         server.start();
-        System.out.println("BIO Server started!");
+        System.out.println("BIOServer started!");
     }
 }
