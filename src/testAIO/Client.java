@@ -87,6 +87,14 @@ public class Client extends Thread{
         System.out.println(Thread.currentThread().getName() + "---run,我开始跑了"+System.currentTimeMillis());
 
 
+        /**
+         * 在 Java 8 之前，因为没有 Lambda 支持只能应用内部类的方式。JDK 提供了以下异步 Channel 来实现异步操作
+         AsynchronousFileChannel
+         AsynchronousSocketChannel
+         AsynchronousServerSocketChannel
+         AsynchronousDatagramChannel
+         获取异步结果的方式有 Future 和  CompletionHandler
+         */
         //连接服务器
         channel.connect(new InetSocketAddress("localhost", 8383), null, new CompletionHandler<Void, Void>(){
 //            final ByteBuffer readBuffer = ByteBuffer.allocateDirect(1024);
