@@ -68,14 +68,25 @@ public class SimpleBioTcpClient {
     }
 
     public static void main(String[] args) {
-        int n = 3;
+        int n = 2;
         StringBuffer data = new StringBuffer();
         Date start = new Date();
         for(int i=0; i<n; i++) {
-            data.delete(0, data.length());
-            data.append("I am the client ").append(++pos).append(".");
-            SimpleBioTcpClient client = new SimpleBioTcpClient("localhost", 1983);
-            client.send(data.toString().getBytes());
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    data.delete(0, data.length());
+                    data.append("I am the client ").append(++pos).append(".").append("---"+Thread.currentThread().getName() );
+                    SimpleBioTcpClient client = new SimpleBioTcpClient("localhost", 1983);
+                    System.out.println(Thread.currentThread().getName() +"---我向服务器发消息了"+System.currentTimeMillis());
+                    client.send(data.toString().getBytes());
+                    for(int i=0;i<100;i++){
+                        System.out.println(Thread.currentThread().getName() +"---"+i+"我跑我的"+System.currentTimeMillis());
+                    }
+                    System.out.println(Thread.currentThread().getName() +"---我跑完了"+System.currentTimeMillis());
+                }
+            });
+            t.start();
         }
         Date end = new Date();
         long cost = end.getTime() - start.getTime();

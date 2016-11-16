@@ -42,26 +42,38 @@ public class SimpleBioTcpServer extends Thread {
      * @throws IOException
      */
     private void handleMessage(Socket socket) throws IOException {
-        InputStream in = socket.getInputStream(); // 流：客户端->服务端（读）
-        OutputStream out = socket.getOutputStream(); // 流：服务端->客户端（写）
-        int receiveBytes;
-        byte[] receiveBuffer = new byte[128];
-        String clientMessage = "";
-        if((receiveBytes=in.read(receiveBuffer))!=-1) {
-            clientMessage = new String(receiveBuffer, 0, receiveBytes);
-            if(clientMessage.startsWith("I am the client")) {
-                String serverResponseWords =
-                        "I am the server, and you are the " + (++sequence) + "th client.";
-                out.write(serverResponseWords.getBytes());
+        //服务器实现方式：一个连接一个线程，实测不用每个新建线程也可以跑
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    InputStream in = socket.getInputStream(); // 流：客户端->服务端（读）
+                    OutputStream out = socket.getOutputStream(); // 流：服务端->客户端（写）
+                    int receiveBytes;
+                    byte[] receiveBuffer = new byte[128];
+                    String clientMessage = "";
+                    if((receiveBytes=in.read(receiveBuffer))!=-1) {
+                        clientMessage = new String(receiveBuffer, 0, receiveBytes);
+                        if(clientMessage.startsWith("I am the client")) {
+                            String serverResponseWords =
+                                    Thread.currentThread().getName() +"---I am the server, and you are the " + (++sequence) + "th client.";
+                            out.write(serverResponseWords.getBytes());
+                        }
+                    }
+                    out.flush();
+                    System.out.println(Thread.currentThread().getName() +"---BIOServer: receives clientMessage->" + clientMessage);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-        }
-        out.flush();
-        System.out.println("BIOServer: receives clientMessage->" + clientMessage);
+        });
+        t.start();
+
     }
 
     public static void main(String[] args) {
         SimpleBioTcpServer server = new SimpleBioTcpServer(1983);
         server.start();
-        System.out.println("BIOServer started!");
+        System.out.println(Thread.currentThread().getName() +"---BIOServer started!");
     }
 }

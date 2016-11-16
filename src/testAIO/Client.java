@@ -49,15 +49,18 @@ public class Client extends Thread{
 
         /**
          * AsynchronousChannelGroup其内部其实是一个(一些)线程池来进行实质工作的；而他们干的活就是等待IO事件，处理数据，分发各个注册的completion handlers
+         AsynchronousChannelGroup可以理解为一个JVM中对于Socket相关操作的一些公共资源的代表。
+         一个ChannelGroup和一个(或2个)thread pool关联。
          */
         AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(Runtime.getRuntime().availableProcessors(), Executors.defaultThreadFactory());
         //只能跑一个线程，第二个线程connect会挂住，暂时不明原因
+        //试过同时跑多个客户端，同一时间也只能一个连接成功，其他的连接都被挂起，但channel都是打开的。
         final int THREAD_NUM = 2;
         CountDownLatch latch = new CountDownLatch(THREAD_NUM);
 
         //创建个多线程模拟多个客户端，模拟失败，无效
         //只能通过命令行同时运行多个进程来模拟多个客户端
-        /*for(int i=0; i<THREAD_NUM; i++){
+        for(int i=0; i<THREAD_NUM; i++){
             Client c = new Client(channelGroup, latch);
             c.start();
             System.out.println(c.getName() + "---start");
@@ -67,11 +70,7 @@ public class Client extends Thread{
             //让主线程等待子线程处理再退出, 这对于异步调用无效
             //t.join();
 
-        }*/
-        Client c1 = new Client(channelGroup, latch);
-        Client c2 = new Client(channelGroup, latch);
-        c1.start();
-        c2.start();
+        }
 
         latch.await();
 
@@ -84,7 +83,7 @@ public class Client extends Thread{
 
     @Override
     public void run() {
-        System.out.println(Thread.currentThread().getName() + "---run,我跑我的"+System.currentTimeMillis());
+        System.out.println(Thread.currentThread().getName() + "---run,我开始跑了"+System.currentTimeMillis());
 
 
         //连接服务器

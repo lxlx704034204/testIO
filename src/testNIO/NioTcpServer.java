@@ -34,7 +34,7 @@ public class NioTcpServer extends Thread {
             serverSocketChannel.configureBlocking(false); // 非阻塞
             serverSocketChannel.socket().bind(inetSocketAddress);
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT); // 向通道注册选择器和对应事件标识
-            log.info("NioServer: socket server started.");
+            log.info(Thread.currentThread().getName() +"---NioServer: socket server started.");
             while(true) { // 轮询
                 int nKeys = selector.select();
                 if(nKeys>0) {
@@ -43,13 +43,13 @@ public class NioTcpServer extends Thread {
                     while(it.hasNext()) {
                         SelectionKey key = it.next();
                         if(key.isAcceptable()) {
-                            log.info("NioServer: SelectionKey is acceptable.");
+                            log.info(Thread.currentThread().getName() +"---NioServer: SelectionKey is acceptable.");
                             handler.handleAccept(key);
                         } else if(key.isReadable()) {
-                            log.info("NioServer: SelectionKey is readable.");
+                            log.info(Thread.currentThread().getName() +"---NioServer: SelectionKey is readable.");
                             handler.handleRead(key);
                         } else if(key.isWritable()) {
-                            log.info("NioServer: SelectionKey is writable.");
+                            log.info(Thread.currentThread().getName() +"---NioServer: SelectionKey is writable.");
                             handler.handleWrite(key);
                         }
                         it.remove();
@@ -96,46 +96,80 @@ public class NioTcpServer extends Thread {
 
         @Override
         public void handleAccept(SelectionKey key) throws IOException {
-            ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
-            SocketChannel socketChannel = serverSocketChannel.accept();
-            log.info("NioServer: accept client socket " + socketChannel);
-            socketChannel.configureBlocking(false);
-            socketChannel.register(key.selector(), SelectionKey.OP_READ);
+            //多路复用器轮询到连接有I/O请求时才启动一个线程进行处理
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
+                        SocketChannel socketChannel = serverSocketChannel.accept();
+                        log.info(Thread.currentThread().getName() +"---NioServer: accept client socket " + socketChannel);
+                        socketChannel.configureBlocking(false);
+                        socketChannel.register(key.selector(), SelectionKey.OP_READ);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            t.start();
+
         }
 
         @Override
         public void handleRead(SelectionKey key) throws IOException {
-            ByteBuffer byteBuffer = ByteBuffer.allocate(512);
-            SocketChannel socketChannel = (SocketChannel)key.channel();
-            while(true) {
-                int readBytes = socketChannel.read(byteBuffer);
-                if(readBytes>0) {
-                    log.info("NioServer: readBytes = " + readBytes);
-                    log.info("NioServer: data = " + new String(byteBuffer.array(), 0, readBytes));
-                    byteBuffer.flip();
-                    socketChannel.write(byteBuffer);
-                    break;
+            //多路复用器轮询到连接有I/O请求时才启动一个线程进行处理
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        ByteBuffer byteBuffer = ByteBuffer.allocate(512);
+                        SocketChannel socketChannel = (SocketChannel)key.channel();
+                        while(true) {
+                            int readBytes = socketChannel.read(byteBuffer);
+                            if(readBytes>0) {
+                                log.info(Thread.currentThread().getName() +"---NioServer: readBytes = " + readBytes + ",NioServer: data = " + new String(byteBuffer.array(), 0, readBytes));
+                                byteBuffer.flip();
+                                socketChannel.write(byteBuffer);
+                                break;
+                            }
+                        }
+                        socketChannel.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
-            }
-            socketChannel.close();
+            });
+            t.start();
+
         }
 
         @Override
         public void handleWrite(SelectionKey key) throws IOException {
-            ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
-            byteBuffer.flip();
-            SocketChannel socketChannel = (SocketChannel)key.channel();
-            socketChannel.write(byteBuffer);
-            if(byteBuffer.hasRemaining()) {
-                key.interestOps(SelectionKey.OP_READ);
-            }
-            byteBuffer.compact();
+            //多路复用器轮询到连接有I/O请求时才启动一个线程进行处理
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
+                        byteBuffer.flip();
+                        SocketChannel socketChannel = (SocketChannel)key.channel();
+                        socketChannel.write(byteBuffer);
+                        if(byteBuffer.hasRemaining()) {
+                            key.interestOps(SelectionKey.OP_READ);
+                        }
+                        byteBuffer.compact();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            t.start();
         }
     }
 
     public static void main(String[] args) {
         NioTcpServer server = new NioTcpServer("localhost", 1000);
         server.start();
-        System.out.println("NIOServer started!");
+        System.out.println(Thread.currentThread().getName() +"---NIOServer started!");
     }
 }
