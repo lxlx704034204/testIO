@@ -55,6 +55,7 @@ public class Client extends Thread{
         AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(Runtime.getRuntime().availableProcessors(), Executors.defaultThreadFactory());
         //只能跑一个线程，第二个线程connect会挂住，暂时不明原因
         //试过同时跑多个客户端，同一时间也只能一个连接成功，其他的连接都被挂起，但channel都是打开的。
+        //服务器端只响应已经连接的线程发送的请求，并且每个请求一个线程，这符合aio的设计方式。已连接但未请求的线程，服务器不新建线程。
         final int THREAD_NUM = 2;
         CountDownLatch latch = new CountDownLatch(THREAD_NUM);
 
