@@ -1,5 +1,7 @@
 package testNIO;
 
+import util.ThreadManager;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -96,8 +98,8 @@ public class NioTcpServer extends Thread {
 
         @Override
         public void handleAccept(SelectionKey key) throws IOException {
-            //多路复用器轮询到连接有I/O请求时才启动一个线程进行处理
-            Thread t = new Thread(new Runnable() {
+            /*//多路复用器轮询到连接有I/O请求时才启动一个线程进行处理,多线程会报异常，看来用法是错误的
+            ThreadManager.getInstance().execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -110,24 +112,31 @@ public class NioTcpServer extends Thread {
                         e.printStackTrace();
                     }
                 }
-            });
-            t.start();
-
+            });*/
+            try {
+                ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
+                SocketChannel socketChannel = serverSocketChannel.accept();
+                log.info(Thread.currentThread().getName() +"---NioServer: accept client socket " + socketChannel);
+                socketChannel.configureBlocking(false);
+                socketChannel.register(key.selector(), SelectionKey.OP_READ);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
         public void handleRead(SelectionKey key) throws IOException {
-            //多路复用器轮询到连接有I/O请求时才启动一个线程进行处理
-            Thread t = new Thread(new Runnable() {
+            /*//多路复用器轮询到连接有I/O请求时才启动一个线程进行处理,多线程会报异常，看来用法是错误的
+            ThreadManager.getInstance().execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
                         ByteBuffer byteBuffer = ByteBuffer.allocate(512);
-                        SocketChannel socketChannel = (SocketChannel)key.channel();
-                        while(true) {
+                        SocketChannel socketChannel = (SocketChannel) key.channel();
+                        while (true) {
                             int readBytes = socketChannel.read(byteBuffer);
-                            if(readBytes>0) {
-                                log.info(Thread.currentThread().getName() +"---NioServer: readBytes = " + readBytes + ",NioServer: data = " + new String(byteBuffer.array(), 0, readBytes));
+                            if (readBytes > 0) {
+                                log.info(Thread.currentThread().getName() + "---NioServer: readBytes = " + readBytes + ",NioServer: data = " + new String(byteBuffer.array(), 0, readBytes));
                                 byteBuffer.flip();
                                 socketChannel.write(byteBuffer);
                                 break;
@@ -138,23 +147,37 @@ public class NioTcpServer extends Thread {
                         e.printStackTrace();
                     }
                 }
-            });
-            t.start();
-
+            });*/
+            try {
+                ByteBuffer byteBuffer = ByteBuffer.allocate(512);
+                SocketChannel socketChannel = (SocketChannel) key.channel();
+                while (true) {
+                    int readBytes = socketChannel.read(byteBuffer);
+                    if (readBytes > 0) {
+                        log.info(Thread.currentThread().getName() + "---NioServer: readBytes = " + readBytes + ",NioServer: data = " + new String(byteBuffer.array(), 0, readBytes));
+                        byteBuffer.flip();
+                        socketChannel.write(byteBuffer);
+                        break;
+                    }
+                }
+                socketChannel.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
         public void handleWrite(SelectionKey key) throws IOException {
-            //多路复用器轮询到连接有I/O请求时才启动一个线程进行处理
-            Thread t = new Thread(new Runnable() {
+            /*//多路复用器轮询到连接有I/O请求时才启动一个线程进行处理,多线程会报异常，看来用法是错误的
+            ThreadManager.getInstance().execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
                         ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
                         byteBuffer.flip();
-                        SocketChannel socketChannel = (SocketChannel)key.channel();
+                        SocketChannel socketChannel = (SocketChannel) key.channel();
                         socketChannel.write(byteBuffer);
-                        if(byteBuffer.hasRemaining()) {
+                        if (byteBuffer.hasRemaining()) {
                             key.interestOps(SelectionKey.OP_READ);
                         }
                         byteBuffer.compact();
@@ -162,8 +185,19 @@ public class NioTcpServer extends Thread {
                         e.printStackTrace();
                     }
                 }
-            });
-            t.start();
+            });*/
+            try {
+                ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
+                byteBuffer.flip();
+                SocketChannel socketChannel = (SocketChannel) key.channel();
+                socketChannel.write(byteBuffer);
+                if (byteBuffer.hasRemaining()) {
+                    key.interestOps(SelectionKey.OP_READ);
+                }
+                byteBuffer.compact();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
