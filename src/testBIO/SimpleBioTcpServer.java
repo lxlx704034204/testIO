@@ -41,7 +41,7 @@ public class SimpleBioTcpServer extends Thread {
      * @param socket 客户端socket
      * @throws IOException
      */
-    private void handleMessage(Socket socket) throws IOException {
+    private void handleMessage(final Socket socket) throws IOException {
         //服务器实现方式：一个连接一个线程，实测不用每个新建线程也可以跑,但是会串用户的操作
         Thread t = new Thread(new Runnable() {
             @Override

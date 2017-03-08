@@ -18,7 +18,7 @@ public class testParam {
     }
 
     private void testA(){
-        Map a = new HashMap<>();
+        Map a = new HashMap<String,String>();
         System.out.println(a.size());
         aAdd(a);
         System.out.println(a.size());
@@ -68,7 +68,7 @@ public class testParam {
     public class Feel {
         public BigDecimal alike;
         public int like;
-        public Map aa = new HashMap<>();
+        public Map aa = new HashMap<String,String>();
         public Integer ilike =0;
     }
 

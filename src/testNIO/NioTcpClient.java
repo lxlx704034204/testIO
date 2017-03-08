@@ -50,13 +50,13 @@ public class NioTcpClient {
     }
 
     public static void main(String[] args) {
-        String hostname = "localhost";
-        String requestData = "Actions speak louder than words!";
-        int port = 1000;
+        final String hostname = "localhost";
+        final String requestData = "Actions speak louder than words!";
+        final int port = 1000;
 //        new NioTcpClient(hostname, port).send(requestData);
 
         int n = 2;
-        StringBuffer data = new StringBuffer();
+        final StringBuffer data = new StringBuffer();
         Date start = new Date();
         for(int i=0; i<n; i++) {
             Thread t = new Thread(new Runnable() {

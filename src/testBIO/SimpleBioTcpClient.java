@@ -68,8 +68,8 @@ public class SimpleBioTcpClient {
     }
 
     public static void main(String[] args) {
-        int n = 2;
-        StringBuffer data = new StringBuffer();
+        final int n = 2;
+        final StringBuffer data = new StringBuffer();
         Date start = new Date();
         for(int i=0; i<n; i++) {
             Thread t = new Thread(new Runnable() {

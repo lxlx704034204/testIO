@@ -9,10 +9,6 @@
 
     <properties>
         <spring.version>4.2.4.RELEASE</spring.version>
-        <security.version>4.0.1.RELEASE</security.version>
-        <mybatis.version>3.1.1</mybatis.version>
-        <hibernate.version>4.3.0.Final</hibernate.version>
-        <poi.version>3.11</poi.version>
     </properties>
 
     <dependencies>

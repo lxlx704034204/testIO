@@ -225,7 +225,7 @@ public class HttpPostUtil {
     }
     public static void main(String[] args) throws Exception {
         String postData = "{\"id\":\"212\",\"title\":\"测试1\",\"content\":\"测试1\",\"author\":\"测试1\",\"createtime\":\"2016-3-4 15:25:16\"}";
-        String postUrl="http://localhost:81/qmcg/admin/interData/webSiteCase/outSideDataImp";
+        String postUrl="http://www.myee7.com/tarot_test";
         HttpPostUtil u = new HttpPostUtil(postUrl);
 //        u.addFileParameter(new MultipartFile("d:/pvm.jpg"));
 //        u.addFileParameter(new MultipartFile("d:/cb6c15f6-a187-3026-8911-03eec0a95cc2.png"));
