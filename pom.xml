@@ -1,0 +1,26 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.my</groupId>
+    <artifactId>testio</artifactId>
+    <packaging>pom</packaging>
+    <version>1.0</version>
+    <name>testio</name>
+
+    <properties>
+        <spring.version>4.2.4.RELEASE</spring.version>
+        <security.version>4.0.1.RELEASE</security.version>
+        <mybatis.version>3.1.1</mybatis.version>
+        <hibernate.version>4.3.0.Final</hibernate.version>
+        <poi.version>3.11</poi.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+    </dependencies>
+
+</project>
