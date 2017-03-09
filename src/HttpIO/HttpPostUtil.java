@@ -230,7 +230,7 @@ public class HttpPostUtil {
 //        u.addFileParameter(new MultipartFile("d:/pvm.jpg"));
 //        u.addFileParameter(new MultipartFile("d:/cb6c15f6-a187-3026-8911-03eec0a95cc2.png"));
 //        u.addTextParameter("gson", postData);
-        u.addUrlList("http://127.0.0.1:81/pirImg/upload/Image/201608/20160826152343638.png");
+        u.addUrlList("http://myee7.com/push_test/100/version/apkUpdate/2017/03/09/100125/apkUpdateConfig.txt");
         String result = u.send();
 
         System.out.println("result:"+result);
