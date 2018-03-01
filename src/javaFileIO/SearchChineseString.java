@@ -1,14 +1,13 @@
 package javaFileIO;
 
 import java.io.*;
-import java.lang.reflect.Field;
-import java.net.URLEncoder;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import util.StringUtil;
@@ -20,18 +19,34 @@ import util.StringUtil;
 public class SearchChineseString {
     private static final Logger LOGGER = LoggerFactory.getLogger(SearchChineseString.class);
 
+    //统计总共的中文数量
+    private int totalChinese = 0;
+
+    /*
+    * 以下内容根据需要先行配置*********************************************************************
+    * */
     //要查找的文件类型集合
     private final static List<String> FILE_TYPES = Arrays.asList(
             ".java"
     );
 
+    //要读取的文件的字符集
+    private final static String READ_FILE_CHARSET = "UTF-8";
+
     //源文件保存路径，输出的替换文件在该目录的/getChinese文件夹下，输出的properties文件在该目录下
 //    private final static String SOURCE_PATH = "D:/test";
-    private final static String SOURCE_PATH = "D:/test/Goor-mrobot-noah";
+//    private final static String SOURCE_PATH = "D:/test/Goor-mrobot-noah-package-tw";
+    private final static String SOURCE_PATH = "D:/test/test";
 
     //输出的资源文件名
-    private final static String OUTPUT_PROPERTY_FILE_NAME = "messages_zh_CN.properties";
+    private final static String OUTPUT_PROPERTY_FILE_NAME = "messages.properties";
+    private final static String OUTPUT_PROPERTY_FILE_PREFEX = "messages_";
+    private final static String OUTPUT_PROPERTY_FILE_AFTERFEX = ".properties";
     private final static String OUTPUT_PROPERTY_PATH_NAME = "getChinese_abcdefg";
+    private final static String OUTPUT_PROPERTY_FILE_CHARSET = "UTF-8";
+
+    //输出的CSV文件字符集，中文为防止乱码，需要用GB2312或者GBK等
+    private final static String OUTPUT_CSV_FILE_CHARSET = "GBK";
 
     //包裹中文的修饰符，java是双引号
     private final static String CHINESE_CONTAINER_REGEX = "\"([^\"])*\"";
@@ -42,8 +57,8 @@ public class SearchChineseString {
     //输出properties文件命名正则:这里取所有非字母和数字的字符，都替换成_
     private final static String PROPERTIES_FILE_KEY_REGEX = "[^A-Za-z0-9]+";
 
-    //java引用的properties类的名称
-    private final static String PROPERTIES_CONSTANT_CLASS_NAME = "PropertiesUtil";
+    //下划线打头的正则
+    private final static String DOWN_LINE_REGEX = "^_+";
 
     //判断是log行的正则表达式，根据要校验的文件添加即可
     private final static String[] LOG_LINE_REGEX_LIST = {
@@ -53,8 +68,19 @@ public class SearchChineseString {
             ".*(log|logger){1}([\\.]{1}(info|error|debug){1}[\\(]{1}){1}.*"
     };
 
-    //统计总共的中文数量
-    private int totalChinese = 0;
+    /**
+     * 生成替换国际化的key的字符
+     * 这里使用的是java国际化的替换形式
+     * @param key
+     * @return
+     */
+    private String getReplaceKey(String key) {
+        return "localeMessageSourceService.getMessage(\"" + key + "\")";
+    }
+
+    /*
+    * 配置结束*********************************************************************
+    * */
 
     /**
      * 查找所有文件中的中文字符串，并根据目录名-文件名-行数/拼音首字母生成变量名替换输出新文件。
@@ -97,8 +123,8 @@ public class SearchChineseString {
                     ;
                     //如果未找到扩展名或者扩展名不是我们要替换的文件，则直接复制文件
                     if (StringUtil.isBlank(fileKindString) || !FILE_TYPES.contains(fileKindString)) {
-                        LOGGER.info("未找到扩展名,可能不是需要替换的文件,直接复制到对应目录");
-                        infoMessage("未找到扩展名,可能不是需要替换的文件,直接复制到对应目录");
+                        LOGGER.info("未找到可用扩展名,可能不是需要替换的文件,直接复制到对应目录");
+                        infoMessage("未找到可用扩展名,可能不是需要替换的文件,直接复制到对应目录");
                         // Destination directory
                         File dir = new File(outputFilePath);
                         File parentPath = new File(dir.getParent());
@@ -168,7 +194,7 @@ public class SearchChineseString {
              OutputStreamWriter（outputstream out,charsetDecoder dec)//使用组定字符集创建
              OutputStreamWriter（outputstream out,String charsetName)//使用指定字符集创建
              */
-            iSR = new InputStreamReader(fis, "UTF-8");
+            iSR = new InputStreamReader(fis, READ_FILE_CHARSET);
             //InputStreamReader 转换成带缓存的bufferedReader
             bufferedReader = new BufferedReader(iSR);
             //可以把读出来的内容赋值给字符
@@ -198,7 +224,10 @@ public class SearchChineseString {
                 //TODO 如果在本行找到了文本，则需要对找到的字符串进行变量替换，并输出变量到另一个properties文件
                 for (String temp : chineseArray) {
                     //把所有目录中的特殊字符替换成_作为key
-                    String key = sourceFilePath.replaceAll(PROPERTIES_FILE_KEY_REGEX, "_");
+                    String key = sourceFilePath.replace(SOURCE_PATH.replaceAll("\\\\", "/"),"")
+                            .replaceAll(PROPERTIES_FILE_KEY_REGEX, "_")//替换掉非数字和字母的字符为下划线
+                            .replaceAll(DOWN_LINE_REGEX,"");//替换掉_打头的字符
+
                     //拼接大写汉字首字母
                     key += "_" + StringUtil.getSearchName(temp);
                     //判断该key值是不是已经存在
@@ -217,14 +246,17 @@ public class SearchChineseString {
                         //两个值完全一样，则只执行文本的替换操作
                     }
                     //统一执行原文的替换文本的操作
-                    replaceString += (orinString.replaceAll(temp, PROPERTIES_CONSTANT_CLASS_NAME + "." + key) + "\r\n");
+                    orinString = (orinString.replaceAll(temp, getReplaceKey(key)) + "\r\n");
                     LOGGER.info("替换前文本:{},替换后文本:{}", temp, key);
                     infoMessage("替换前文本:{},替换后文本:{}", temp, key);
                 }
                 LOGGER.info("该行找到的一系列中文字符串为：{},开始替换", chineseArray);
                 infoMessage("该行找到的一系列中文字符串为：{},开始替换", chineseArray);
+                //统一执行原文的替换文本的操作
+                replaceString += (orinString + "\r\n");
+                LOGGER.info("最终替换文本:{}", replaceString);
+                infoMessage("最终替换文本:{}", replaceString);
             }
-
 
             //Create target of output stream
             File dir = new File(outPutFilePath);
@@ -234,9 +266,9 @@ public class SearchChineseString {
             //创建文件
             dir.createNewFile();
             infoMessage("outputFilePath:{}", outPutFilePath);
-            writeFile(outPutFilePath, false, replaceString, "UTF-8");
+            writeFile(outPutFilePath, false, replaceString, READ_FILE_CHARSET);
 
-            //再先读再写properties文件，文件路径还有重复
+            //再先读再写properties文件
             Iterator<Map.Entry<String, String>> entries = allChineseProperties.entrySet().iterator();
             String propertiesString = "";
             while (entries.hasNext()) {
@@ -254,7 +286,7 @@ public class SearchChineseString {
             }
 
             //TODO
-            File propDir = new File((SOURCE_PATH + File.separator + OUTPUT_PROPERTY_FILE_NAME).replaceAll("\\\\", "/"));
+            File propDir = new File((SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_NAME).replaceAll("\\\\", "/"));
             if (!propDir.exists()) {
                 File propParentPath = new File(propDir.getParent());
                 //创建目录
@@ -263,7 +295,7 @@ public class SearchChineseString {
                 propDir.createNewFile();
             }
             //true表示在原来的文件后追加输出
-            writeFile(propDir.getPath(), true, propertiesString, "UTF-8");
+            writeFile(propDir.getPath(), true, propertiesString, OUTPUT_PROPERTY_FILE_CHARSET);
             return true;
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
@@ -288,6 +320,8 @@ public class SearchChineseString {
             }
         }
     }
+
+
 
     /**
      * 替换第一个和最后一个双引号
@@ -411,12 +445,14 @@ public class SearchChineseString {
                 if (length <= 1) {
                     LOGGER.info("本行不包含 {} 注释", regex);
                     infoMessage("本行不包含 {} 注释", regex);
+                    sReturn.setStringResult(temp[0]);
                 } else {
                     LOGGER.info("本行包含 {} 注释", regex);
                     infoMessage("本行包含 {} 注释", regex);
+                    //过滤掉第一个，保留第一个注释后面的
+                    sReturn.setStringResult(string.replaceFirst(temp[0] + regex, ""));
                 }
-                //过滤掉第一个，保留第一个注释后面的
-                sReturn.setStringResult(string.replace(temp[0] + regex, ""));
+
             }
         } else {
             LOGGER.info("保留字符串 {} 方向未识别！错误！", direction);
@@ -605,15 +641,22 @@ public class SearchChineseString {
      * 读文件，并返回字符串数组
      *
      * @param sourceFilePath
+     * @param charSet
      * @return
      */
-    private List<String> readFile(String sourceFilePath) {
+    private List<String> readFile(String sourceFilePath, String charSet) {
         //State input stream quote
         FileInputStream fis = null;
         InputStreamReader iSR = null;
         BufferedReader bufferedReader = null;
         List<String> result = new ArrayList<String>();
         try {
+            if(!(new File(sourceFilePath).exists())) {
+                LOGGER.info("文件不存在:{}",sourceFilePath);
+                infoMessage("文件不存在:{}",sourceFilePath);
+                return null;
+            }
+
             //Create target of input stream "D:/from.txt"
             fis = new FileInputStream(sourceFilePath);
 
@@ -634,7 +677,7 @@ public class SearchChineseString {
              OutputStreamWriter（outputstream out,charsetDecoder dec)//使用组定字符集创建
              OutputStreamWriter（outputstream out,String charsetName)//使用指定字符集创建
              */
-            iSR = new InputStreamReader(fis, "UTF-8");
+            iSR = new InputStreamReader(fis, charSet);
             //InputStreamReader 转换成带缓存的bufferedReader
             bufferedReader = new BufferedReader(iSR);
             String orinString;
@@ -769,12 +812,24 @@ public class SearchChineseString {
                 FileOutputStream fs = new FileOutputStream(newPath);
                 byte[] buffer = new byte[1444];
                 int length;
-                while ((byteread = inStream.read(buffer)) != -1) {
-                    bytesum += byteread; //字节数 文件大小
-                    System.out.println(bytesum);
-                    fs.write(buffer, 0, byteread);
+                try {
+                    while ((byteread = inStream.read(buffer)) != -1) {
+                        bytesum += byteread; //字节数 文件大小
+                        System.out.println(bytesum);
+                        fs.write(buffer, 0, byteread);
+                    }
+                } catch (IOException e) {
+                    LOGGER.error("复制单个文件操作出错,{}", e);
+                    e.printStackTrace();
                 }
-                inStream.close();
+                finally {
+                    if(inStream != null) {
+                        inStream.close();
+                    }
+                    if(fs != null) {
+                        fs.close();
+                    }
+                }
             }
         } catch (Exception e) {
             LOGGER.error("复制单个文件操作出错,{}", e);
@@ -787,34 +842,39 @@ public class SearchChineseString {
     private static final String NEW_LINE_SEPARATOR = "\n";
 
     /**
-     * headers 为CSV文件的文件头， fields 为对象的属性名，
-     * 除创建时间外，headers与fields的字段需一一对应
-     * headers 始终比fields多一个元素，最后的创建时间
-     *
+     * headers 为CSV文件的标题行，
+     * dataList为数据列，prop文件是以=为分隔符
      * @param dataList
      * @param headers
      * @return 返回导出文件路径
      */
-    private String writePropToCSV(List<String> dataList, String[] headers, String filePath) {
-        if (dataList == null || dataList.size() == 0 || headers.length == 0) {
+    private String writePropToCSV(List<String> dataList, String[] headers, String outputFilePath) {
+        if (dataList == null || dataList.size() == 0 || headers == null || headers.length == 0) {
+            LOGGER.info("无可用导出数据");
+            infoMessage("无可用导出数据");
             return "";
         }
-        File lgFile = new File(filePath);
+        File lgFile = new File(outputFilePath);
 
         CSVFormat format = CSVFormat.DEFAULT.withRecordSeparator(NEW_LINE_SEPARATOR).withFirstRecordAsHeader();
         // 这是写入CSV的代码
         OutputStreamWriter out = null;
         CSVPrinter printer = null;
         try {
-            out = new OutputStreamWriter(new FileOutputStream(lgFile), "GB2312");
+            out = new OutputStreamWriter(new FileOutputStream(lgFile), OUTPUT_CSV_FILE_CHARSET);
             printer = new CSVPrinter(out, format);
             //写入列头数据
             printer.printRecord(headers);
             for (String bean : dataList) {
                 List<String> logInfoRecord = new ArrayList<String>();
                 String[] temp = bean.split("=");
+                //第一列是键
                 logInfoRecord.add(temp[0]);
-                logInfoRecord.add(temp[1]);
+                //第二列是CN，简体中文
+                String simplified = temp[1];
+                logInfoRecord.add(simplified);
+                //第三列是TW,繁体中文
+                logInfoRecord.add(ZHConverter.convert(simplified,ZHConverter.TRADITIONAL));
                 printer.printRecord(logInfoRecord);
             }
         } catch (Exception e) {
@@ -837,6 +897,110 @@ public class SearchChineseString {
         }
     }
 
+    /**
+     * 从csv文件写到多个properties文件。
+     * csv的第一行为抬头：比如key,zh_CN,zh_TW
+     * csv的第二行开始为数据
+     * 生成的properties文件
+     * @param csvFilePath 读取的csv文件路径
+     * @param headers
+     * @param propFilePathPrefix
+     */
+    private void writeCSVToProp(String csvFilePath, String[] headers, String propFilePathPrefix) {
+        LOGGER.info("从csv文件写到多个properties文件");
+        infoMessage("从csv文件写到多个properties文件");
+
+        /*if (headers == null || headers.length == 0) {
+            LOGGER.info("无可用头行");
+            infoMessage("无可用头行");
+            return;
+        }*/
+
+        try {
+            String fileKindString = csvFilePath.substring(csvFilePath.lastIndexOf(".")).trim().toLowerCase();
+
+            if (!fileKindString.equals(".csv")) {
+                LOGGER.error("源文件格式不正确,只能为.csv格式");
+                errorMessage("源文件格式不正确,只能为.csv格式");
+                return;
+            }
+            final File file = new File(csvFilePath.replaceAll("\\\\", "/"));
+            if (!file.exists()) {
+                LOGGER.error("源文件不存在");
+                errorMessage("源文件不存在");
+                return;
+            }
+
+            //异步插入数据库
+            //用线程池代替原来的new Thread方法
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try(BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(csvFilePath), OUTPUT_CSV_FILE_CHARSET))) {
+                        CSVFormat format = CSVFormat.DEFAULT.withRecordSeparator(NEW_LINE_SEPARATOR).withSkipHeaderRecord();
+
+                        Iterable<CSVRecord> records = format.parse(br);
+                        int i = 0;
+                        ArrayList<String> headers = new ArrayList<String>();
+                        for (CSVRecord record : records) {
+                            if(i == 0) {
+                                LOGGER.info("第一行是头");
+                                infoMessage("第一行是头");
+                                //第一行是头
+                                for(int j = 0;j<record.size();j++) {
+                                    String s = record.get(j);
+                                    LOGGER.info("头{}为：{}",j,s);
+                                    infoMessage("头{}为：{}",j,s);
+                                    headers.add(s);
+                                }
+                                i++;
+                                continue;
+                            }
+
+                            String key = null;
+                            int headerSize = headers.size();
+                            for(int j = 0; j < headerSize;j++) {
+                                String header = headers.get(j);
+                                String value = record.get(j);
+                                //第一列是key
+                                if(j == 0) {
+                                    key = value;
+                                    continue;
+                                }
+
+                                LOGGER.info("数据行header={},key={},value={}",header,key,value);
+                                infoMessage("数据行语言名header={},主键key={},值value={}",header,key,value);
+                                //TODO
+                                File propDir = new File((SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_PREFEX + header + OUTPUT_PROPERTY_FILE_AFTERFEX).replaceAll("\\\\", "/"));
+                                if (!propDir.exists()) {
+                                    File propParentPath = new File(propDir.getParent());
+                                    //创建目录
+                                    propParentPath.mkdirs();
+                                    //创建文件
+                                    propDir.createNewFile();
+                                }
+                                String propertiesString = key + "=" + replaceFirstLastDoubleQuotationMarks(value) + "\r\n";
+                                //true表示在原来的文件后追加输出
+                                writeFile(propDir.getPath(), true, propertiesString, OUTPUT_PROPERTY_FILE_CHARSET);
+                            }
+                            i++;
+                        }
+                        LOGGER.info("csv文件数据读取完毕");
+                        infoMessage("csv文件数据读取完毕");
+
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            }).start();
+        } catch (Exception e) {
+            LOGGER.error(e.getMessage(), e);
+            e.printStackTrace();
+        }
+    }
+
     public int getTotalChinese() {
         return totalChinese;
     }
@@ -853,25 +1017,33 @@ public class SearchChineseString {
     public static void main(String[] args) {
         try {
             SearchChineseString searchChineseString = new SearchChineseString();
-            //生成查找中文的prop文件
+            //生成查找中文的prop文件=================================================================
             File file = new File(SOURCE_PATH);
             searchChineseString.replaceChinese(file, SOURCE_PATH);
             searchChineseString.infoMessage("总共的中文条数:{}", searchChineseString.getTotalChinese());
 
-            //把prop文件导出到csv
-            String propFilePath = SOURCE_PATH + File.separator + OUTPUT_PROPERTY_FILE_NAME;
+            //把prop文件导出到csv===================================================================
+            String propFilePath = SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_NAME;
             searchChineseString.writePropToCSV(
-                    searchChineseString.readFile(propFilePath.replaceAll("\\\\", "/")),
-                    new String[]{"键名", "值"},
+                    searchChineseString.readFile(propFilePath.replaceAll("\\\\", "/"), OUTPUT_PROPERTY_FILE_CHARSET),
+                    new String[]{"键名", "zh_CN","zh_TW"},
                     (propFilePath + ".csv").replaceAll("\\\\", "/")
             );
 
+            //从csv文件生成prop文件===================================================================
+            String csvFilePath = SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_NAME + ".csv";
+            String propFilePathPrefix = SOURCE_PATH + File.separator + OUTPUT_PROPERTY_FILE_PREFEX;
+            searchChineseString.writeCSVToProp(
+                    csvFilePath,
+                    null,
+                    propFilePathPrefix);
+
             //测试引号
-            /*Pattern pattern = Pattern.compile("\"([^\"])*\"");
+            Pattern pattern = Pattern.compile("\"([^\"])*\"");
             Matcher matcher = pattern.matcher("\"adsfsdf阿三的发生地方\"+\"dsfdf\"");
             while (matcher.find()) {
                 System.out.println(matcher.group());
-            }*/
+            }
 
             //测试match
             String regex = null;
@@ -956,12 +1128,37 @@ public class SearchChineseString {
             System.out.println("dsfsdfdsfsd*/哈哈//asdfs".split(regex).length);
             regex = "\\*/";
             System.out.println("dsfsdfdsfsd*/哈哈//asdfs".split(regex).length);
+            String sc1 = "大幅度舒服\"dsfdsfdsf的发生对方的身份\"*/\"第三方\"\"第4方\"sadfadsfdsfdsfdsf/*\"第5方\"";
+            System.out.println(sc1.split(regex).length);
+            StringByRegexResult sReturn = new StringByRegexResult();
+            sReturn = searchChineseString.getStringByRegexAfter(sc1, regex);
+            System.out.println(sReturn.getStringResult());
+            System.out.println("下划线=====================================================");
+            regex = "^_+";
+            String s1 = "_asdfsdfgdsgsdlog.info-hkjhkjh(ewqirouewoiruwe";
+            String s2 = "__asdfsdfgdsgsdlog.info-hkjhkjh(ewqirouewoiruwe";
+            String s3 = "asdfsdfgdsgsdlog__info-hkjhkjh(ewqirouewoiruwe";
+            String s4 = "asd__fsdfgdsgsdlog__info-hkjhkjh(ewqirouewoiruwe";
+            System.out.println(matchLookingAt(regex, s1, Pattern.CASE_INSENSITIVE));
+            System.out.println(matchLookingAt(regex, s2, Pattern.CASE_INSENSITIVE));
+            System.out.println(matchLookingAt(regex, s3, Pattern.CASE_INSENSITIVE));
+            System.out.println(matchLookingAt(regex, s4, Pattern.CASE_INSENSITIVE));
+            System.out.println((s1.replace(regex, "")));
+            System.out.println((s2.replace(regex, "")));
+            System.out.println((s3.replace(regex, "")));
+            System.out.println((s4.replace(regex, "")));
+            System.out.println((s1.replaceAll(regex, "")));
+            System.out.println((s2.replaceAll(regex, "")));
+            System.out.println((s3.replaceAll(regex, "")));
+            System.out.println((s4.replaceAll(regex, "")));
 
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+
 
 
 }
