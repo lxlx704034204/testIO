@@ -201,12 +201,26 @@ public class SearchChineseString {
             String replaceString = new String();
             String orinString;
             Map<String, String> allChineseProperties = new HashMap<String, String>();
+            //行数
+//            int i = 0;
+            //换行符
+            String changeLine = "";
             while ((orinString = bufferedReader.readLine()) != null) {
+                //对该行前面是不是该换行进行处理
+                /*if(i <= 0) {
+                    //第一行前面不用加换行符
+                    changeLine = "";
+                }
+                else {
+                    changeLine = "\r\n";
+                }
+                i++;*/
+                changeLine = "\r\n";
                 //如果是日志行，直接复制
                 if (isLogLine(orinString)) {
                     LOGGER.info("#########该行是日志行,原文: {} ", orinString);
                     infoMessage("#########该行是日志行,原文:{}", orinString);
-                    replaceString += (orinString + "\r\n");
+                    replaceString += (orinString + changeLine);
                     continue;
                 }
 
@@ -217,7 +231,7 @@ public class SearchChineseString {
                     LOGGER.info("#########该行没找到中文字符串,原文: {} ", orinString);
                     infoMessage("#########该行没找到中文字符串,原文:{}", orinString);
                     //没找到字符串，本行直接复制。并在末尾加上换行符
-                    replaceString += (orinString + "\r\n");
+                    replaceString += (orinString + changeLine);
                     continue;
                 }
 
@@ -246,14 +260,14 @@ public class SearchChineseString {
                         //两个值完全一样，则只执行文本的替换操作
                     }
                     //统一执行原文的替换文本的操作
-                    orinString = (orinString.replaceAll(temp, getReplaceKey(key)) + "\r\n");
+                    orinString = orinString.replaceAll(temp, getReplaceKey(key));
                     LOGGER.info("替换前文本:{},替换后文本:{}", temp, key);
                     infoMessage("替换前文本:{},替换后文本:{}", temp, key);
                 }
                 LOGGER.info("该行找到的一系列中文字符串为：{},开始替换", chineseArray);
                 infoMessage("该行找到的一系列中文字符串为：{},开始替换", chineseArray);
                 //统一执行原文的替换文本的操作
-                replaceString += (orinString + "\r\n");
+                replaceString += (orinString + changeLine);
                 LOGGER.info("最终替换文本:{}", replaceString);
                 infoMessage("最终替换文本:{}", replaceString);
             }
@@ -377,7 +391,8 @@ public class SearchChineseString {
             //1.将正在表达式封装成对象Patten 类来实现
             Pattern pattern = Pattern.compile(CHINESE_CONTAINER_REGEX);
             //2.将字符串和正则表达式相关联
-            Matcher matcher = pattern.matcher(sReturn.getStringResult());
+            String matcherString = (sReturn.getStringResult() == null? "" : sReturn.getStringResult());
+            Matcher matcher = pattern.matcher(matcherString);
 
             //查找符合规则的子串
             while (matcher.find()) {
