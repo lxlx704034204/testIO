@@ -19,8 +19,33 @@ public class UserInfo implements Serializable {
         this.userAge=userage;
     }
 
+    @Override
     public String toString(){
         return "用户名: "+this.userName+";密码："+this.userPass+
                 ";年龄："+this.userAge;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getUserPass() {
+        return userPass;
+    }
+
+    public void setUserPass(String userPass) {
+        this.userPass = userPass;
+    }
+
+    public int getUserAge() {
+        return userAge;
+    }
+
+    public void setUserAge(int userAge) {
+        this.userAge = userAge;
     }
 }
