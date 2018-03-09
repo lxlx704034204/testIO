@@ -14,7 +14,16 @@ import util.StringUtil;
 
 /**
  * @author Created by chay on 2018/1/31.
- *         查找所有文件中的中文字符串，并根据目录名-文件名-行数/拼音首字母生成变量名
+ *         查找所有文件中的中文字符串，并根据文件名/拼音首字母/时间戳(当前面部分重复但值不同的时候，比如中文拼音一样的词)生成变量名
+ *
+ *         注意：
+ *         1.枚举类因为java的特殊关系，无法调用service，需要自己再手动处理。——把枚举类中的value改成properties中的key值，
+ *         在调用枚举类值的时候，用get(key)方法拿到对应的properties文件中的值进行输出。枚举类的caption不受影响。
+ *         2.有些文件的最后可能会多一个换行，如果介意的话，可以手动处理掉。不介意的话没事。
+ *         3.@ApiOperation 注解用于生成文档的，不能调用service，需要手动还原。
+ *         4.凡是替换过中文的类，需要手动注入service:
+ *         @Autowired
+ *         private LocaleMessageSourceService localeMessageSourceService;
  */
 public class SearchChineseString {
     private static final Logger LOGGER = LoggerFactory.getLogger(SearchChineseString.class);
@@ -36,7 +45,8 @@ public class SearchChineseString {
     //源文件保存路径，输出的替换文件在该目录的/getChinese文件夹下，输出的properties文件在该目录下
 //    private final static String SOURCE_PATH = "D:/test";
 //    private final static String SOURCE_PATH = "D:/test/Goor-mrobot-noah-package-tw";
-    private final static String SOURCE_PATH = "D:/test/test";
+//    private final static String SOURCE_PATH = "D:/test/test";
+    private final static String SOURCE_PATH = "D:/test/prop";
 
     //输出的资源文件名
     private final static String OUTPUT_PROPERTY_FILE_NAME = "messages.properties";
@@ -100,9 +110,9 @@ public class SearchChineseString {
                 return true;
             }
             if (file.exists()) {
-                String tempFilePath = filePath.replaceAll("\\\\", "/");//把路径中的反斜杠替换成斜杠
-                String tempSourcePath = SOURCE_PATH.replaceAll("\\\\", "/") + "/";
-                String tempTargetPath = (SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator).replaceAll("\\\\", "/");
+                String tempFilePath = replaceSlash(filePath);//把路径中的反斜杠替换成斜杠
+                String tempSourcePath = replaceSlash(SOURCE_PATH) + "/";
+                String tempTargetPath = replaceSlash(SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator);
                 String targetPath = tempFilePath.replaceAll(tempSourcePath, tempTargetPath);
                 //如果是文件，则读取其中的中文字符串
                 if (file.isFile()) {
@@ -119,8 +129,8 @@ public class SearchChineseString {
 
                     }
 
-                    String outputFilePath = targetPath.replaceAll("\\\\", "/");
-                    ;
+                    String outputFilePath = replaceSlash(targetPath);
+
                     //如果未找到扩展名或者扩展名不是我们要替换的文件，则直接复制文件
                     if (StringUtil.isBlank(fileKindString) || !FILE_TYPES.contains(fileKindString)) {
                         LOGGER.info("未找到可用扩展名,可能不是需要替换的文件,直接复制到对应目录");
@@ -158,6 +168,15 @@ public class SearchChineseString {
             e.printStackTrace();
         }
         return false;
+    }
+
+    /**
+     * 替换/斜杠为反斜杠\\,注意正则需要四个\\\\
+     * @param s
+     * @return
+     */
+    private String replaceSlash(String s) {
+        return s.replaceAll("\\\\", "/");
     }
 
     /**
@@ -238,7 +257,7 @@ public class SearchChineseString {
                 //TODO 如果在本行找到了文本，则需要对找到的字符串进行变量替换，并输出变量到另一个properties文件
                 for (String temp : chineseArray) {
                     //把所有目录中的特殊字符替换成_作为key
-                    String key = sourceFilePath.replace(SOURCE_PATH.replaceAll("\\\\", "/"),"")
+                    String key = sourceFilePath.replace(replaceSlash(SOURCE_PATH),"")
                             .replaceAll(PROPERTIES_FILE_KEY_REGEX, "_")//替换掉非数字和字母的字符为下划线
                             .replaceAll(DOWN_LINE_REGEX,"");//替换掉_打头的字符
 
@@ -260,7 +279,7 @@ public class SearchChineseString {
                         //两个值完全一样，则只执行文本的替换操作
                     }
                     //统一执行原文的替换文本的操作
-                    orinString = orinString.replaceAll(temp, getReplaceKey(key));
+                    orinString = orinString.replace(temp, getReplaceKey(key));
                     LOGGER.info("替换前文本:{},替换后文本:{}", temp, key);
                     infoMessage("替换前文本:{},替换后文本:{}", temp, key);
                 }
@@ -300,7 +319,7 @@ public class SearchChineseString {
             }
 
             //TODO
-            File propDir = new File((SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_NAME).replaceAll("\\\\", "/"));
+            File propDir = new File(replaceSlash(SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_NAME));
             if (!propDir.exists()) {
                 File propParentPath = new File(propDir.getParent());
                 //创建目录
@@ -363,55 +382,60 @@ public class SearchChineseString {
      * @return
      */
     private ArrayList<String> getChineseStringArray(String s, ArrayList<String> history) {
-        String regex = null;
-        StringByRegexResult sReturn = null;
-        //分隔符是不是有多个
-        boolean isMultiRegex = false;
-        //过滤第一个//之后的字符
-        regex = "//";
-        sReturn = getStringByRegexBefore(s, regex);
+        try {
+            String regex = null;
+            StringByRegexResult sReturn = null;
+            //分隔符是不是有多个
+            boolean isMultiRegex = false;
+            //过滤第一个//之后的字符
+            regex = "//";
+            sReturn = getStringByRegexBefore(s, regex);
 
-        //过滤第一个/*之后的字符
-        regex = "/\\*";
-        sReturn = getStringByRegexBefore(sReturn.getStringResult(), regex);
-        isMultiRegex = isMultiRegex || (sReturn.getSplitLength() > 1 ? true : false);
+            //过滤第一个/*之后的字符
+            regex = "/\\*";
+            sReturn = getStringByRegexBefore(sReturn.getStringResult(), regex);
+            isMultiRegex = isMultiRegex || (sReturn.getSplitLength() > 1 ? true : false);
 
-        //过滤第一个*/之前的字符
-        regex = "\\*/";
-        sReturn = getStringByRegexAfter(sReturn.getStringResult(), regex);
-        isMultiRegex = isMultiRegex || (sReturn.getSplitLength() > 1 ? true : false);
+            //过滤第一个*/之前的字符
+            regex = "\\*/";
+            sReturn = getStringByRegexAfter(sReturn.getStringResult(), regex);
+            isMultiRegex = isMultiRegex || (sReturn.getSplitLength() > 1 ? true : false);
 
-        //完成一轮/*与*/之间的字符搜索，如果检测含有多个/*或*/则递归搜索
-        if (isMultiRegex) {
-            return getChineseStringArray(sReturn.getStringResult(), history);
-        }
-        //只有一层注释字符，则匹配中间的中文，提取到列表
-        else {
-            //TODO 匹配中文
-            //1.将正在表达式封装成对象Patten 类来实现
-            Pattern pattern = Pattern.compile(CHINESE_CONTAINER_REGEX);
-            //2.将字符串和正则表达式相关联
-            String matcherString = (sReturn.getStringResult() == null? "" : sReturn.getStringResult());
-            Matcher matcher = pattern.matcher(matcherString);
-
-            //查找符合规则的子串
-            while (matcher.find()) {
-                //获取 字符串
-                String temp = matcher.group();
-                //获取的字符串的首位置和末位置
-                LOGGER.info("字符串的首位置{}和末位置{}", matcher.start(), matcher.end());
-                infoMessage("字符串的首位置{}和末位置{}", matcher.start(), matcher.end());
-                //如果包含中文
-                if (matchLookingAt(CHINESE_CHARACTER_REGEX, temp, null)) {
-                    LOGGER.info("该引号分隔后字符串‘包含’中文:{}", temp);
-                    infoMessage("该引号分隔后字符串‘包含’中文:{}", temp);
-                    history.add(temp);
-                } else {
-                    LOGGER.info("该引号分隔后字符串‘不包’含中文:{}", temp);
-                    infoMessage("该引号分隔后字符串‘不包’含中文:{}", temp);
-                }
+            //完成一轮/*与*/之间的字符搜索，如果检测含有多个/*或*/则递归搜索
+            if (isMultiRegex) {
+                return getChineseStringArray(sReturn.getStringResult(), history);
             }
-            return history;
+            //只有一层注释字符，则匹配中间的中文，提取到列表
+            else {
+                //TODO 匹配中文
+                //1.将正在表达式封装成对象Patten 类来实现
+                Pattern pattern = Pattern.compile(CHINESE_CONTAINER_REGEX);
+                //2.将字符串和正则表达式相关联
+                String matcherString = (sReturn.getStringResult() == null? "" : sReturn.getStringResult());
+                Matcher matcher = pattern.matcher(matcherString);
+
+                //查找符合规则的子串
+                while (matcher.find()) {
+                    //获取 字符串
+                    String temp = matcher.group();
+                    //获取的字符串的首位置和末位置
+                    LOGGER.info("字符串的首位置{}和末位置{}", matcher.start(), matcher.end());
+                    infoMessage("字符串的首位置{}和末位置{}", matcher.start(), matcher.end());
+                    //如果包含中文
+                    if (matchLookingAt(CHINESE_CHARACTER_REGEX, temp, null)) {
+                        LOGGER.info("该引号分隔后字符串‘包含’中文:{}", temp);
+                        infoMessage("该引号分隔后字符串‘包含’中文:{}", temp);
+                        history.add(temp);
+                    } else {
+                        LOGGER.info("该引号分隔后字符串‘不包’含中文:{}", temp);
+                        infoMessage("该引号分隔后字符串‘不包’含中文:{}", temp);
+                    }
+                }
+                return history;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -465,7 +489,7 @@ public class SearchChineseString {
                     LOGGER.info("本行包含 {} 注释", regex);
                     infoMessage("本行包含 {} 注释", regex);
                     //过滤掉第一个，保留第一个注释后面的
-                    sReturn.setStringResult(string.replaceFirst(temp[0] + regex, ""));
+                    sReturn.setStringResult(string.replaceFirst(regex,"").replace(temp[0], ""));
                 }
 
             }
@@ -939,7 +963,7 @@ public class SearchChineseString {
                 errorMessage("源文件格式不正确,只能为.csv格式");
                 return;
             }
-            final File file = new File(csvFilePath.replaceAll("\\\\", "/"));
+            final File file = new File(replaceSlash(csvFilePath));
             if (!file.exists()) {
                 LOGGER.error("源文件不存在");
                 errorMessage("源文件不存在");
@@ -986,7 +1010,7 @@ public class SearchChineseString {
                                 LOGGER.info("数据行header={},key={},value={}",header,key,value);
                                 infoMessage("数据行语言名header={},主键key={},值value={}",header,key,value);
                                 //TODO
-                                File propDir = new File((SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_PREFEX + header + OUTPUT_PROPERTY_FILE_AFTERFEX).replaceAll("\\\\", "/"));
+                                File propDir = new File(replaceSlash((SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_PREFEX + header + OUTPUT_PROPERTY_FILE_AFTERFEX)));
                                 if (!propDir.exists()) {
                                     File propParentPath = new File(propDir.getParent());
                                     //创建目录
@@ -1032,7 +1056,7 @@ public class SearchChineseString {
     public static void main(String[] args) {
         try {
             SearchChineseString searchChineseString = new SearchChineseString();
-            //生成查找中文的prop文件=================================================================
+            /*//生成查找中文的prop文件=================================================================
             File file = new File(SOURCE_PATH);
             searchChineseString.replaceChinese(file, SOURCE_PATH);
             searchChineseString.infoMessage("总共的中文条数:{}", searchChineseString.getTotalChinese());
@@ -1040,10 +1064,10 @@ public class SearchChineseString {
             //把prop文件导出到csv===================================================================
             String propFilePath = SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_NAME;
             searchChineseString.writePropToCSV(
-                    searchChineseString.readFile(propFilePath.replaceAll("\\\\", "/"), OUTPUT_PROPERTY_FILE_CHARSET),
+                    searchChineseString.readFile(searchChineseString.replaceSlash(propFilePath), OUTPUT_PROPERTY_FILE_CHARSET),
                     new String[]{"键名", "zh_CN","zh_TW"},
-                    (propFilePath + ".csv").replaceAll("\\\\", "/")
-            );
+                    searchChineseString.replaceSlash(propFilePath + ".csv")
+            );*/
 
             //从csv文件生成prop文件===================================================================
             String csvFilePath = SOURCE_PATH + File.separator + OUTPUT_PROPERTY_PATH_NAME + File.separator + OUTPUT_PROPERTY_FILE_NAME + ".csv";
@@ -1148,6 +1172,7 @@ public class SearchChineseString {
             StringByRegexResult sReturn = new StringByRegexResult();
             sReturn = searchChineseString.getStringByRegexAfter(sc1, regex);
             System.out.println(sReturn.getStringResult());
+            System.out.println(("@Scheduled(cron = \"0 */1 * * * ?\")".replaceFirst(regex, "").replace("@Scheduled(cron = \"0 ", "")));
             System.out.println("下划线=====================================================");
             regex = "^_+";
             String s1 = "_asdfsdfgdsgsdlog.info-hkjhkjh(ewqirouewoiruwe";
@@ -1166,6 +1191,14 @@ public class SearchChineseString {
             System.out.println((s2.replaceAll(regex, "")));
             System.out.println((s3.replaceAll(regex, "")));
             System.out.println((s4.replaceAll(regex, "")));
+            System.out.println("圆括号=====================================================");
+            regex = "\\)|\\( ";
+            String s5 = ")该包装类型已经存在，请勿重复添加！";
+            String s6 = "(该包装类型已经存在，请勿重复添加！";
+            System.out.println(matchLookingAt(regex, s5, Pattern.CASE_INSENSITIVE));
+            System.out.println(matchLookingAt(regex, s6, Pattern.CASE_INSENSITIVE));
+            System.out.println((s5.replace(")", "\\)")));
+            System.out.println((s6.replaceAll(regex, "")));
 
 
         } catch (Exception e) {
