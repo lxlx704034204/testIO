@@ -246,7 +246,6 @@ public class EnumUtil {
                 //非class属性，否则会映射错误
                 if (!propertyName.equals("class")) {
                     getPropertyMap(descriptor, bean, returnMap);
-                    continue;
                 }
             }
         }
@@ -445,7 +444,7 @@ public class EnumUtil {
 
         System.out.println(toMap(StationType.CENTER));
 
-        /*System.out.println(StationType.class.getSimpleName());
+        System.out.println(StationType.class.getSimpleName());
         System.out.println(StationType.class.getName());
         LocaleMessageSourceService localeMessageSourceService = new LocaleMessageSourceService() {
             @Override
@@ -494,6 +493,6 @@ public class EnumUtil {
             }
         };
         System.out.println(enumListInternationalization(VALUE, StationType.class, StationType.values(), localeMessageSourceService));
-        System.out.println(enumListInternationalization(null, RfidBraceletTypeEnum.class, RfidBraceletTypeEnum.values(), localeMessageSourceService));*/
+        System.out.println(enumListInternationalization(null, RfidBraceletTypeEnum.class, RfidBraceletTypeEnum.values(), localeMessageSourceService));
     }
 }
