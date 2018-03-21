@@ -312,7 +312,7 @@ public class EnumUtil {
                         continue;
                     }
                     propertyName = propertyName.toString();
-                    LOGGER.info("字段名为",propertyName);
+                    LOGGER.info("字段名为{}",propertyName);
                     if (null == result) {
                         LOGGER.info("字段{}值为空{}",propertyName,result);
                         continue;
