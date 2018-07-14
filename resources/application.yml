@@ -1,0 +1,156 @@
+
+# Define the port where the Service Registry server would be running
+server:
+  #port: 8063
+  port: 8060
+  session:
+    timeout: 10
+
+
+spring:
+  redis:
+    database: 1
+    host: 172.16.2.70
+    port: 6379
+    password: redis
+    timeout: 30000
+    pool:
+      max-active: 8
+      max-wait: -1
+      max-idle: 8
+      min-idle: 0
+  http:
+    multipart:
+      enabled: true
+      max-file-size: 1000Mb
+      max-request-size: 1000Mb
+
+spring:
+  rabbitmq:
+#    host: 172.16.2.70
+    host: 172.16.0.115
+    port: 56723
+    username: test
+    password: test
+#    host: 172.16.0.229
+#    port: 5672
+#    username: guest
+#    password: guest
+    virtual-host: /
+    connection-timeout: 5000
+    template:
+      receive-timeout: 5000
+      reply-timeout: 5000
+      retry.max-interval: 5000
+    listener:
+      simple:
+        acknowledge-mode: none
+        concurrency: 10
+        prefetch: 10
+
+  application:
+    name: spirng-boot-rabbitmq-goor-server
+  datasource:
+#    url: jdbc:mysql://172.16.2.70:33163/agv?autoReconnect=true&useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull
+#    url: jdbc:mysql://localhost:3306/agv20180320wuhan?useUnicode=true&characterEncoding=utf-8&autoReconnect=true&failOverReadOnly=false&useSSL=false
+#    url: jdbc:mysql://localhost:3306/agv20180427wuhan?useUnicode=true&characterEncoding=utf-8&autoReconnect=true&failOverReadOnly=false&useSSL=false
+#    url: jdbc:mysql://172.16.0.15:3306/agvA?autoReconnect=true&useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull
+#    url: jdbc:mysql://localhost:3306/goor_hospital_20180116bb_test?useUnicode=true&characterEncoding=utf-8&autoReconnect=true&failOverReadOnly=false&useSSL=false
+#    url: jdbc:mysql://localhost:3306/goor_18back20171226?useUnicode=true&characterEncoding=utf-8&autoReconnect=true&failOverReadOnly=false&useSSL=false
+    url: jdbc:mysql://localhost:3306/goor_hospital_20180516bf?useUnicode=true&characterEncoding=utf-8&autoReconnect=true&failOverReadOnly=false&useSSL=false
+    username: root
+    password: root
+#    password: 123456
+#    password: Q123~qqq
+#    password: myeeChinarenx0+/
+    driver-class-name: com.mysql.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    initialSize: 5
+    minIdle: 5
+    maxActive: 20
+    maxWait: 60000
+    timeBetweenEvictionRunsMillis: 60000
+    minEvictableIdleTimeMillis: 300000
+    validationQuery: SELECT 1 FROM DUAL
+    testWhileIdle: true
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: true
+    maxPoolPreparedStatementPerConnectionSize: 20
+    filters: stat,wall,log4j
+    connectionProperties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
+  messages:
+    basename: i18n/messages
+    #设定加载的资源文件缓存失效时间，-1的话为永不过期，默认为-1
+    cache-seconds: 3600
+    #设定Message bundles的编码，默认: UTF-8
+    encoding: UTF-8
+
+goor:
+  push:
+    agent:
+      dirs: /goor/server/resource
+    remote:
+      dirs: /test
+#    dirs: /goor/server/download_home
+    dirs: e:\\download_home\\push
+#    http: http://172.16.2.70/push/
+    http: http://localhost/push/
+maxUploadSize: 524288000
+
+#通用Mapper配置
+
+#mappers 多个接口时逗号隔开
+mapper:
+  mappers: cn.muye.cn.ni.util.MyMapper
+  not-empty: false
+  identity: MYSQL
+
+#pagehelper
+pagehelper:
+  helperDialect: mysql
+  reasonable: true
+  supportMethodsArguments: true
+  params: count=countSql
+
+authServer:
+  api: "/uaa/oauth/token"
+  port: 7070
+  host: 127.0.0.1
+
+url:
+  excludeUri: "/account/user/logOut,/account/user/login/pad,/account/user/login,/goor/ws,/services/,/check*,/appliance,/operation/mac/bind/list,/opera/password,/operation/departmentType,/operation/type,/services/appliance/searchName,/appliance/packageType,/area/fixpath/upload,assets/robotOnlineStatus,/testApi"
+
+security:
+  sessions: stateless
+  oauth2:
+    resource:
+      id: user
+      user-info-uri: http://127.0.0.1:7070/uaa/user
+      prefer-token-info: false
+
+mission:
+  item:
+    concurrentable: true
+    floormanager: true
+
+#logging:
+#  level:
+#    root: WARN
+#    java:
+#      sql: DEBUG
+#    com:
+#      rb:
+#        sampleSBootMybatisH2: DEBUG
+#        sampleSBootMybatisH2:
+#          mapper: TRACE
+#          mapper:
+#            UserMapper:
+#              findByStates: TRACE
+#    org:
+#      springframework:
+#        web: DEBUG
+#      hibernate: DEBUG
+
+
+

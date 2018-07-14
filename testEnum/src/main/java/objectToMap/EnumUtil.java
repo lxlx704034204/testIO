@@ -83,7 +83,7 @@ public class EnumUtil {
     private final static String TYPE_INTEGER = "java.lang.Integer";
     private final static String TYPE_DOUBLE = "java.lang.Double";
     private final static String TYPE_BOOLEAN = "java.lang.Boolean";
-    private final static String TYPE_DATE = "java.util.Date";
+    private final static String TYPE_DATE = "java.cn.ni.util.Date";
     /**
      * 根据类型把value转换成对应的类
      * @param value

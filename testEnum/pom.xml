@@ -335,7 +335,7 @@
                         <option>-keep public class cn.muye.base.** </option>
                         <option>-keep public class cn.muye.service.consumer.topic.*</option>
                         <option>-keep public class cn.muye.service.missiontask.*</option>
-                        <option>-keep public class cn.muye.util.** </option>
+                        <option>-keep public class cn.muye.cn.ni.util.**</option>
                         <option>-keep public class cn.muye.log.base.LogInfoUtils </option>
                     </options>
                     <!-- 添加依赖，这里你可以按你的需要修改，这里测试只需要一个JRE的Runtime包就行了 -->
